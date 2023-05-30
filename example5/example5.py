@@ -1,8 +1,10 @@
 """
-Example 4
+Example 5
 """
 import re
+import sys
 import socket
+import argparse
 from datetime import datetime
 from time import mktime
 from wsgiref.handlers import format_date_time
@@ -10,15 +12,34 @@ from wsgiref.handlers import format_date_time
 ADDRESS = "127.0.0.1"
 PORT = 8080
 
+FILES_TO_BUILD = {
+    "index.html": {
+        "template": """
+<!doctype html>
+<html>
 
-def get_formatted_header(status_code=200, status_message="OK", content_type: str = ""):
+<body>
+    <h1>{{header}}</h1>
+    <p>{{paragraph}}</p>
+</body>
+
+</html>
+""",
+        "params": {
+            "header": "Michel needs to tighten his sk8 tracks",
+            "paragraph": "It's easier to ollie that way.",
+        },
+    }
+}
+
+
+def get_formatted_header(status_code=200, status_message="OK"):
     return f"""HTTP/1.1 {status_code} {status_message}
 accept-ranges: bytes
 Cache-Control: private, max-age=0
 date: {format_date_time(mktime(datetime.now().timetuple()))}
 expires: -1
 last-modified: {format_date_time(mktime(datetime.now().timetuple()))}
-{"content-type: "+content_type if content_type else ""}
 
 """
 
@@ -42,12 +63,9 @@ def render_template(template_filename="index.html", **kwargs) -> str:
                     if not k in line:
                         continue
                     regex = "\{\{\s*(?P<" + k + ">\w+)\s*\}\}"
-                    m = re.search(regex, line)
                     line = re.sub(regex, v, line)
 
                 rendered_template += line
-                if m:
-                    print(k, m.group(0))
 
             return rendered_template
     except Exception as e:
@@ -55,33 +73,46 @@ def render_template(template_filename="index.html", **kwargs) -> str:
     return ""
 
 
-# API view
-def get_api_response() -> str:
-    return (
-        get_formatted_header(content_type="application/json")
-        + '{"paragraph": "It\'s easier to ollie that way." }'
-    )
+def build_site(files_to_build: dict) -> None:
+    for filename, config in files_to_build.items():
+        print(f"Building file '{filename}'")
+        with open(filename, "w+") as f:
+            f.write(config["template"])
+
+        rendered_html = render_template(filename, **config["params"])
+
+        with open(filename, "w") as f:
+            print(rendered_html)
+            f.write(rendered_html)
 
 
-# Root URL view
-def get_root_response() -> str:
-    return get_formatted_header() + render_template(
-        "index.html",
-        header="Michel needs to tighten his sk8 tracks",
-    )
-
-
-def router(route="/") -> str:
+def load_file_contents(filename="index.html") -> str:
     """
-    Function which specifies routes and gets response
-    from each "view"
+    Simple text file reader
     """
-    if route == "/api":
-        return get_api_response()
-    return get_root_response()
+    try:
+        with open(filename, "r+") as f:
+            return f.read()
+    except Exception as e:
+        print(f"Failed to open {filename} ({e})!")
+    return ""
 
+
+parser = argparse.ArgumentParser(
+    prog="example5",
+    description="Program that can generate and serve HTML files",
+    epilog="BOTTOM TEXT",
+)
+
+parser.add_argument("-b", "--build", action="store_true")
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.build:
+        build_site(FILES_TO_BUILD)
+        print("All files built, exiting")
+        sys.exit(0)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((ADDRESS, PORT))
@@ -99,16 +130,12 @@ if __name__ == "__main__":
                 if not data:
                     print("No data received")
                     break
+                # Print it
+                print(f"Received data:\n{data.decode()}")
 
-                data = data.decode()
-                # Pringet_formatted_header() t it
-                print(f"Received data:\n{data}")
-                route = data.split(" ")[1]
-                print(f"Requested route '{route}")
-
-                print("Sending response to client")
+                print("Sending contents of index.html to client")
                 # Response is header + contents
-                response = router(route=route)
+                response = get_formatted_header() + load_file_contents("index.html")
                 print(response)
 
                 conn.sendall(response.encode())
