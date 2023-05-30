@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+
+<body>
+    <h1></h1>
+    <p></p>
+</body>
+<script>
+    window.onload = () => {
+
+        const socket = new WebSocket("ws://localhost:8081");
+        // Listen for messages
+        socket.addEventListener("message", (event) => {
+            console.log("Message from server ", event.data);
+            let data = JSON.parse(event.data)
+            if ("header" in data) {
+                let h1 = document.querySelector("h1");
+                h1.innerHTML = data.header;
+            }
+            if ("paragraph" in data) {
+                let p = document.querySelector("p");
+                p.innerHTML = data.paragraph;
+            }
+        });
+
+        // Connection opened
+        // socket.addEventListener("open", (event) => {
+        //     socket.send("Hello Server!");
+        // });
+    };
+
+</script>
+
+</html>
