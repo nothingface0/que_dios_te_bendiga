@@ -1,7 +1,6 @@
 """
-Example 2
+Example 3
 """
-import re
 import socket
 from datetime import datetime
 from time import mktime
