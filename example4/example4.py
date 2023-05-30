@@ -101,7 +101,7 @@ if __name__ == "__main__":
                     break
 
                 data = data.decode()
-                # Pringet_formatted_header() t it
+                # Print it
                 print(f"Received data:\n{data}")
                 route = data.split(" ")[1]
                 print(f"Requested route '{route}")
